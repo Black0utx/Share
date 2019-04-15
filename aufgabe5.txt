@@ -1,0 +1,64 @@
+1 // build : clang - lpthread thread3 .c
+2 # include <pthread .h>
+3 # include <stdlib .h>
+4 # include <unistd .h>
+5 # include <stdio .h>
+6
+7 int doPrintf = 1;
+8
+9 int sharedInteger = 0;
+10 static int numIncrements = 2000;
+11 static int sleepTime_micros = -1;
+12
+13 void maySleep (){
+14 if ( sleepTime_micros >= 0) {
+15 usleep ( sleepTime_micros ); // 0 => just yield CPU
+16 }
+17 }
+18
+19 void * thread_printdots ( void * arg ) {
+20 int i,j;
+21 for (i =0; i< numIncrements ; i++ ) {
+22 j= sharedInteger ;
+23 j=j +1;
+24 if ( doPrintf ){
+25 printf (".");
+26 fflush ( stdout );
+27 }
+28 maySleep ();
+29 sharedInteger =j;
+30 }
+31 return NULL ;
+32 }
+33
+34 int main ( int argc , char ** argv , char ** envp ) {
+35 pthread_t thread_1 ;
+36 printf (" usage : a. out numIncrements (=2000) sleepTime_micros (= -1)\n");
+37 if(argc >=2) {
+38 numIncrements = atoi ( argv [1]) ; // number of increments of sharedInteger ( per
+thread )
+39 }
+40 if( argc ==3) {
+41 sleepTime_micros = atoi ( argv [2]) ; // time to sleep between loops
+42 }
+43 sharedInteger = 0;
+2
+44 if ( pthread_create ( & thread_1 , NULL , thread_printdots , NULL ) ) {
+45 perror (" error creating thread .");
+46 abort ();
+47 }
+48 for (int i =0; i< numIncrements ; i ++) {
+49 sharedInteger ++;
+50 if ( doPrintf ){
+51 printf ("o");
+52 fflush ( stdout );
+53 }
+54 maySleep ();
+55 }
+56 if ( pthread_join ( thread_1 , NULL ) ) {
+57 perror (" error joining thread .");
+58 abort ();
+59 }
+60 printf ("\ nsharedInteger = %d\n", sharedInteger );
+61 return ( sharedInteger ==2* numIncrements ) ? 0 : 1;
+62 }
